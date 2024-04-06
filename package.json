@@ -1,0 +1,17 @@
+{
+  "name": "sacn_ledfx_bridge",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "tsc && node out/index"
+  },
+  "author": "8-lambda-8",
+  "license": "LGPL-3.0-or-later",
+  "devDependencies": {
+    "typescript": "^5.4.3"
+  },
+  "dependencies": {
+  }
+}
