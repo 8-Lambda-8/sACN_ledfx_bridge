@@ -10,8 +10,10 @@
   "author": "8-lambda-8",
   "license": "LGPL-3.0-or-later",
   "devDependencies": {
+    "@types/node": "^20.12.5",
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "e131": "^1.1.3"
   }
 }
