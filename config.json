@@ -1,0 +1,7 @@
+{
+  "sAcnUniverse": 1,
+  "channel": 1,
+  "scenes": ["scene1", "scene2"],
+  "ledfx_host": "127.0.0.1",
+  "ledfx_port": "8888"
+}

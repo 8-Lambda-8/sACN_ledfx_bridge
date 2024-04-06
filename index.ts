@@ -1,11 +1,10 @@
 import http from "http";
 import { Server } from "e131";
 import blessed from "blessed";
+import config from "./config.json" assert { type: "json" };
 
-// config
-const sAcnUniverse = 1;
-const channel = 0;
-const scenes = ["baseocean", "orangehigh"];
+const channel = config.channel - 1;
+const scenes = config.scenes;
 
 function activateScene(sceneId: string, deactivate?: boolean) {
   const payload = JSON.stringify({
@@ -14,8 +13,8 @@ function activateScene(sceneId: string, deactivate?: boolean) {
   });
 
   const put_options = {
-    host: "127.0.0.1",
-    port: "8888",
+    host: config.ledfx_host,
+    port: config.ledfx_port,
     path: "/api/scenes",
     method: "PUT",
     headers: {
@@ -28,7 +27,7 @@ function activateScene(sceneId: string, deactivate?: boolean) {
   post_req.end();
 }
 
-const server = new Server([sAcnUniverse]);
+const server = new Server([config.sAcnUniverse]);
 const screen = blessed.screen();
 const line1 = blessed.text({
   top: +screen.height - 5,
@@ -54,7 +53,7 @@ const zeroPad = (num: number, places: number) =>
   String(num).padStart(places, "0");
 
 let lastVal = 0;
-let scene = "";
+let scene = "off";
 
 server.on("packet", (inPacket: any) => {
   let inSlotsData = inPacket.getSlotsData() as Buffer;
@@ -68,8 +67,7 @@ server.on("packet", (inPacket: any) => {
     if (lastVal == 0) {
       activateScene(scene, true);
       scene = "off";
-    }
-    if (lastVal - 1 in scenes) {
+    } else if (lastVal - 1 in scenes) {
       scene = scenes[lastVal - 1];
       activateScene(scene);
     }
