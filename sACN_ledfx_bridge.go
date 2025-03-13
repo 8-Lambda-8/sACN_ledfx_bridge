@@ -10,6 +10,8 @@ import (
 
 	"github.com/Hundemeier/go-sacn/sacn"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/table"
 )
 
 var p *tea.Program
@@ -106,11 +108,27 @@ func main() {
 	}
 }
 
+type Styles struct {
+	Border      lipgloss.Style
+	Header      lipgloss.Style
+}
+
+func DefaultStyles() *Styles {
+	s := new(Styles)
+	s.Border = lipgloss.NewStyle().Foreground(lipgloss.Color("36"))
+	s.Header = lipgloss.NewStyle().Foreground(lipgloss.Color("202"))
+	return s
+}
+
 type model struct {
+	styles *Styles
+	width  int
+	height int
 }
 
 func initialModel() model {
 	return model{
+		styles: DefaultStyles(),
 	}
 }
 
@@ -124,6 +142,9 @@ type updateSceneMsg string
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 	// Is it a key press?
 	case tea.KeyMsg:
 
@@ -144,12 +165,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	// The header
-	s := "sACN LedFX Bridge\n"
-	s += fmt.Sprintf("%03d => %s\n", channelValue, ActiveScene)
+	title := `       ___  ______  __  __          ______       ___      _    __        
+  ___ / _ |/ ___/ |/ / / /  ___ ___/ / __/_ __  / _ )____(_)__/ /__ ____ 
+ (_-</ __ / /__/    / / /__/ -_) _  / _/ \ \ / / _  / __/ / _  / _ '/ -_)
+/___/_/ |_\___/_/|_/ /____/\__/\_,_/_/  /_\_\ /____/_/ /_/\_,_/\_, /\__/ 
+                                                              /___/      `
+
+	header :=
+		m.styles.Header.Render(
+			lipgloss.Place(
+				m.width-2,
+				m.height/4,
+				lipgloss.Center,
+				lipgloss.Center,
+				title,
+			))
+
+	sceneInfo := fmt.Sprintf(" %03d => %s", channelValue, ActiveScene)
+
 
 	// The footer
-	s += "\nPress q to quit.\n"
+	quit := "Press q to quit."
 
 	// Send the UI for rendering
-	return s
+
+	return lipgloss.PlaceVertical(m.height, 0,
+		table.New().
+			Border(lipgloss.RoundedBorder()).
+			BorderStyle(m.styles.Border).
+			BorderRow(true).
+			Row(header).
+			Row(sceneInfo).
+			Row().
+			Row(quit).
+			Render())
 }
