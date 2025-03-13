@@ -12,6 +12,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+var p *tea.Program
+
 type Config struct {
 	Universe   int      `json:"sAcnUniverse"`
 	Channel    int      `json:"channel"`
@@ -27,6 +29,7 @@ func activateScene(sceneId string, deactivate bool) {
 	} else {
 		ActiveScene = sceneId
 	}
+	p.Send(updateSceneMsg(ActiveScene))
 
 	payload := map[string]interface{}{"id": sceneId, "action": action}
 	out, err := json.Marshal(payload)
@@ -96,7 +99,7 @@ func main() {
 	})
 	recv.Start()
 
-	p := tea.NewProgram(initialModel())
+	p = tea.NewProgram(initialModel())
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("Alas, there's been an error: %v", err)
 		os.Exit(1)
@@ -116,6 +119,8 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
+type updateSceneMsg string
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
@@ -129,6 +134,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		}
+	case updateSceneMsg:
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
@@ -138,7 +144,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	// The header
-	s := "sACN LedFX Bridge:\n"
+	s := "sACN LedFX Bridge\n"
+	s += fmt.Sprintf("%03d => %s\n", channelValue, ActiveScene)
 
 	// The footer
 	s += "\nPress q to quit.\n"
