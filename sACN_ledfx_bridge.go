@@ -16,7 +16,6 @@ type Config struct {
 	Channel    int      `json:"channel"`
 	Scenes     []string `json:"scenes"`
 	LedFx_host string   `json:"ledfx_host"`
-	LedFx_port string   `json:"ledfx_port"`
 }
 
 func activateScene(sceneId string, deactivate bool) {
@@ -37,7 +36,7 @@ func activateScene(sceneId string, deactivate bool) {
 
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPut,
-		"http://"+configData.LedFx_host+":"+configData.LedFx_port+"/api/scenes",
+		configData.LedFx_host+"/api/scenes",
 		strings.NewReader(string(out)),
 	)
 	if err != nil {
