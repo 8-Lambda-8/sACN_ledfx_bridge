@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"strings"
 
 	"github.com/Hundemeier/go-sacn/sacn"
 )
@@ -18,16 +20,41 @@ type Config struct {
 }
 
 func activateScene(sceneId string, deactivate bool) {
+	var action = "activate"
 	if deactivate {
 		ActiveScene = "OFF"
-		fmt.Print("de")
+		action = "deactivate"
 	} else {
 		ActiveScene = sceneId
 	}
-	fmt.Println("activate ", sceneId)
+	fmt.Println(action, sceneId)
+
+	payload := map[string]interface{}{"id": sceneId, "action": action}
+	out, err := json.Marshal(payload)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPut,
+		"http://"+configData.LedFx_host+":"+configData.LedFx_port+"/api/scenes",
+		strings.NewReader(string(out)),
+	)
+	if err != nil {
+		// handle error
+		log.Fatal(err)
+	}
+	_, err = client.Do(req)
+	if err != nil {
+		// handle error
+		log.Fatal(err)
+	}
+
 }
 
 var ActiveScene = "OFF"
+
+var configData Config
 
 func main() {
 	file, err := os.ReadFile("./config.json")
@@ -35,7 +62,6 @@ func main() {
 		log.Fatalf("Failed to read file: %v\n", err)
 	}
 
-	var configData Config
 	err = json.Unmarshal(file, &configData)
 	if err != nil {
 		log.Fatal(err)
