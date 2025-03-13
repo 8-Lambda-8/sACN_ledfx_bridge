@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Hundemeier/go-sacn/sacn"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 type Config struct {
@@ -26,7 +27,6 @@ func activateScene(sceneId string, deactivate bool) {
 	} else {
 		ActiveScene = sceneId
 	}
-	fmt.Println(action, sceneId)
 
 	payload := map[string]interface{}{"id": sceneId, "action": action}
 	out, err := json.Marshal(payload)
@@ -53,6 +53,9 @@ func activateScene(sceneId string, deactivate bool) {
 
 var ActiveScene = "OFF"
 
+var channelValue byte = 0
+var lastChannelValue byte = 0
+
 var configData Config
 
 func main() {
@@ -65,19 +68,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(configData)
 
 	recv, err := sacn.NewReceiverSocket("", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	var lastChannelValue byte = 0
 
 	recv.SetOnChangeCallback(func(old sacn.DataPacket, newD sacn.DataPacket) {
-		fmt.Println("data changed on", newD.Universe())
 
-		var channelValue = newD.Data()[configData.Channel-1]
-		fmt.Println("selected Channel value: ", channelValue)
+		channelValue = newD.Data()[configData.Channel-1]
+
 		if channelValue != lastChannelValue {
 			lastChannelValue = channelValue
 
@@ -91,9 +91,58 @@ func main() {
 		}
 	})
 	recv.SetTimeoutCallback(func(univ uint16) {
-		fmt.Println("timeout on", univ)
+		//Todo: replace
+		// fmt.Println("timeout on", univ)
 	})
 	recv.Start()
-	fmt.Println("start")
-	select {} //only that our program does not exit. Exit with Ctrl+C
+
+	p := tea.NewProgram(initialModel())
+	if _, err := p.Run(); err != nil {
+		log.Fatalf("Alas, there's been an error: %v", err)
+		os.Exit(1)
+	}
+}
+
+type model struct {
+}
+
+func initialModel() model {
+	return model{
+	}
+}
+
+func (m model) Init() tea.Cmd {
+	// Just return `nil`, which means "no I/O right now, please."
+	return nil
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+
+	// Is it a key press?
+	case tea.KeyMsg:
+
+		// Cool, what was the actual key pressed?
+		switch msg.String() {
+
+		// These keys should exit the program.
+		case "ctrl+c", "q":
+			return m, tea.Quit
+		}
+	}
+
+	// Return the updated model to the Bubble Tea runtime for processing.
+	// Note that we're not returning a command.
+	return m, nil
+}
+
+func (m model) View() string {
+	// The header
+	s := "sACN LedFX Bridge:\n"
+
+	// The footer
+	s += "\nPress q to quit.\n"
+
+	// Send the UI for rendering
+	return s
 }
