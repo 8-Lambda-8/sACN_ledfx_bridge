@@ -384,7 +384,9 @@ func (m model) View() string {
 	for i, setting := range m.settingItems {
 		cursor := " " // no cursor
 		value := "  " + configValueFromIndex(i)
+		lineStyle := colStyle(m.styles.colorText)
 		if m.cursor == i {
+			lineStyle = colStyle(m.styles.colorSelected)
 			if !m.textInput.Focused() {
 				cursor = ">" // cursor!
 			} else {
@@ -393,7 +395,7 @@ func (m model) View() string {
 		}
 
 		settingsTable.Row(
-			fmt.Sprintf("  %s %s  ", cursor, setting),
+			lineStyle.Render(fmt.Sprintf("  %s %s  ", cursor, setting)),
 			value,
 		)
 	}
