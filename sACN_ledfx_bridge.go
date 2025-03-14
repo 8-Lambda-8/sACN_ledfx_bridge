@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -127,6 +129,37 @@ func main() {
 }
 
 func loadLedfxScenes() {
+	var resp *http.Response
+	resp, err := http.Get(
+		configData.LedFx_host + "/api/scenes",
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var apiObj struct {
+		Scenes map[string]struct {
+			Name string `json:"name"`
+		} `json:"scenes"`
+	}
+
+	err = json.Unmarshal(body, &apiObj)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tempScenes = tempScenes[:0]
+	for k := range apiObj.Scenes {
+		tempScenes = append(tempScenes, k)
+	}
+
+	slices.Sort(tempScenes)
 }
 
 type Styles struct {
@@ -427,10 +460,10 @@ func (m model) View() string {
 		valueColumn += value + "\n"
 	}
 
-	lineStyle := colStyle(m.styles.colorText).Strikethrough(true)
+	lineStyle := colStyle(m.styles.colorText)
 	if m.sceneCursor == 0 {
 		sceneColumn += ">"
-		lineStyle = colStyle(m.styles.colorSelected).Strikethrough(true)
+		lineStyle = colStyle(m.styles.colorSelected)
 	} else {
 		sceneColumn += " "
 	}
