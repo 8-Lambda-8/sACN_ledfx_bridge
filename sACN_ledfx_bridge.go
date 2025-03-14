@@ -282,6 +282,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 			} else if m.sceneCursor > 0 {
 				m.sceneCursor--
+			} else if (m.cursor == 0 || m.cursor == 1) && m.textInput.Focused() {
+				i, err := strconv.ParseUint(m.textInput.Value(), 10, 16)
+				if err == nil {
+					m.textInput.SetValue(fmt.Sprint(i + 1))
+				}
 			}
 
 		case "down", "j", "s":
@@ -289,6 +294,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			} else if m.sceneCursor >= 0 && m.sceneCursor < len(tempScenes) {
 				m.sceneCursor++
+			} else if (m.cursor == 0 || m.cursor == 1) && m.textInput.Focused() {
+				i, err := strconv.ParseUint(m.textInput.Value(), 10, 16)
+				if err == nil && i > 1 {
+					m.textInput.SetValue(fmt.Sprint(i - 1))
+				}
 			}
 
 		case "enter", " ":
@@ -512,7 +522,7 @@ func (m model) View() string {
 		footer = " Press esc to abort edit or enter to submit."
 	}
 	if m.sceneCursor >= 0 {
-		footer = " Press esc to abort or PgUp or PgDn to reorder scenes or ctrl+S to Save"
+		footer = " Press esc to abort, PgUp or PgDn to reorder scenes or ctrl+S to Save"
 	}
 
 	// Send the UI for rendering
