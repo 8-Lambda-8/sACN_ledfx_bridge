@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -65,8 +66,10 @@ var lastChannelValue byte = 0
 
 var configData Config
 
+var configFile = "./config.json"
+
 func main() {
-	file, err := os.ReadFile("./config.json")
+	file, err := os.ReadFile(configFile)
 	if err != nil {
 		log.Fatalf("Failed to read file: %v\n", err)
 	}
@@ -215,6 +218,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				m.textInput.Blur()
+			} else if m.cursor == 4 && m.changed {
+				//Save config.json
+				out, err := json.MarshalIndent(configData, "", "  ")
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				err = os.WriteFile(configFile, out, fs.ModeDevice)
+				if err != nil {
+					log.Fatalf("Failed to write file: %v\n", err)
+				}
+
+				m.changed = false
 			}
 
 		case "esc":
