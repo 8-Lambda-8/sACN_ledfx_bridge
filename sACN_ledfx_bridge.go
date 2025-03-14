@@ -9,8 +9,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Hundemeier/go-sacn/sacn"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -20,8 +22,8 @@ import (
 var p *tea.Program
 
 type Config struct {
-	Universe   int      `json:"sAcnUniverse"`
-	Channel    int      `json:"channel"`
+	Universe   uint64   `json:"sAcnUniverse"`
+	Channel    uint64   `json:"channel"`
 	Scenes     []string `json:"scenes"`
 	LedFx_host string   `json:"ledfx_host"`
 }
@@ -85,6 +87,9 @@ func main() {
 	}
 
 	recv.SetOnChangeCallback(func(old sacn.DataPacket, newD sacn.DataPacket) {
+		if newD.Universe() == uint16(configData.Universe) {
+			p.Send(recievingMsg(newD.Universe()))
+		}
 
 		channelValue = newD.Data()[configData.Channel-1]
 
@@ -101,8 +106,9 @@ func main() {
 		}
 	})
 	recv.SetTimeoutCallback(func(univ uint16) {
-		//Todo: replace
-		// fmt.Println("timeout on", univ)
+		if univ == uint16(configData.Universe) {
+			p.Send(timeOutMsg(univ))
+		}
 	})
 	recv.Start()
 
@@ -132,8 +138,9 @@ type model struct {
 	cursor       int
 	settingItems []string
 	textInput    textinput.Model
-
-	changed bool
+	spinner      spinner.Model
+	recieving    bool
+	changed      bool
 }
 
 func initialModel() model {
@@ -142,20 +149,32 @@ func initialModel() model {
 	ti.Width = 50
 	//Todo: add Validator
 
+	sp := spinner.New()
+	sp.Spinner = spinner.Points
+	sp.Spinner.FPS = time.Second / 4
+	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+
 	return model{
 		styles:       DefaultStyles(),
 		settingItems: []string{"Universe", "Channel", "LedFx Host", "Scenes", "Save"},
-		changed:      false,
 		textInput:    ti,
+		spinner:      sp,
+		recieving:    false,
+		changed:      false,
 	}
 }
 
 func (m model) Init() tea.Cmd {
 	// Just return `nil`, which means "no I/O right now, please."
-	return textinput.Blink
+	return tea.Batch(
+		textinput.Blink,
+		m.spinner.Tick,
+	)
 }
 
 type updateSceneMsg string
+type recievingMsg uint
+type timeOutMsg uint
 type errMsg error
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -191,11 +210,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textInput.Focus()
 				m.textInput.SetValue(configValueFromIndex(m.cursor))
 			} else if msg.String() == "enter" && m.textInput.Focused() && m.textInput.Err == nil {
+
 				// set changes
 				value := m.textInput.Value()
 				switch m.cursor {
 				case 0:
-					i, err := strconv.Atoi(value)
+					i, err := strconv.ParseUint(value, 10, 16)
 					if err == nil {
 						if configData.Universe != i {
 							m.changed = true
@@ -203,7 +223,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						configData.Universe = i
 					}
 				case 1:
-					i, err := strconv.Atoi(value)
+					i, err := strconv.ParseUint(value, 10, 16)
 					if err == nil {
 						if configData.Channel != i {
 							m.changed = true
@@ -239,7 +259,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab":
 			m.textInput.Reset()
 		}
+
 	case updateSceneMsg:
+
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		if m.recieving {
+			m.spinner, cmd = m.spinner.Update(msg)
+		}
+		return m, cmd
+	case recievingMsg:
+		m.recieving = true
+		m.spinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(m.spinner.Tick())
+
+		return m, cmd
+
+	case timeOutMsg:
+		m.recieving = false
+		m.spinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 
 	case errMsg:
 		// ToDo: Handle this
@@ -285,6 +325,8 @@ func (m model) View() string {
 
 	sceneInfo := fmt.Sprintf(" %03d => %s", channelValue, ActiveScene)
 
+	recievingSpinner := m.spinner.View()
+
 	settings := " Settings:"
 	if m.changed {
 		settings += " (changed)"
@@ -325,7 +367,7 @@ func (m model) View() string {
 			BorderStyle(m.styles.Border).
 			BorderRow(true).
 			Row(header).
-			Row(sceneInfo).
+			Row(lipgloss.JoinHorizontal(lipgloss.Center, " ", recievingSpinner, "   ", sceneInfo)).
 			Row(settings+"\n"+settingsTable.Render()).
 			Row(quit).
 			Render())
