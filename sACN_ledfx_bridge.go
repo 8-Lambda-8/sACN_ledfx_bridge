@@ -109,8 +109,8 @@ func main() {
 }
 
 type Styles struct {
-	Border      lipgloss.Style
-	Header      lipgloss.Style
+	Border lipgloss.Style
+	Header lipgloss.Style
 }
 
 func DefaultStyles() *Styles {
@@ -121,14 +121,17 @@ func DefaultStyles() *Styles {
 }
 
 type model struct {
-	styles *Styles
-	width  int
-	height int
+	styles       *Styles
+	width        int
+	height       int
+	cursor       int
+	settingItems []string
 }
 
 func initialModel() model {
 	return model{
-		styles: DefaultStyles(),
+		styles:       DefaultStyles(),
+		settingItems: []string{"Universe", "Channel", "Scenes", "LedFx Host", "Save"},
 	}
 }
 
@@ -145,15 +148,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-	// Is it a key press?
-	case tea.KeyMsg:
 
-		// Cool, what was the actual key pressed?
+	case tea.KeyMsg:
 		switch msg.String() {
 
-		// These keys should exit the program.
 		case "ctrl+c", "q":
 			return m, tea.Quit
+
+		case "up", "k", "w":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+
+		case "down", "j", "s":
+			if m.cursor < len(m.settingItems)-1 {
+				m.cursor++
+			}
+
+		case "enter", " ":
 		}
 	case updateSceneMsg:
 	}
@@ -161,6 +173,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Return the updated model to the Bubble Tea runtime for processing.
 	// Note that we're not returning a command.
 	return m, nil
+}
+
+func configValueFromIndex(index int) string {
+	switch index {
+	case 0:
+		return fmt.Sprintf("%d", configData.Universe)
+	case 1:
+		return fmt.Sprintf("%d", configData.Channel)
+	case 3:
+		return configData.LedFx_host
+	default:
+		return ""
+	}
 }
 
 func (m model) View() string {
@@ -183,9 +208,28 @@ func (m model) View() string {
 
 	sceneInfo := fmt.Sprintf(" %03d => %s", channelValue, ActiveScene)
 
+	settings := " Settings:\n"
+	settingsTable := table.New().
+		BorderTop(false).
+		BorderLeft(false).
+		BorderRight(false).
+		BorderBottom(false).
+		BorderColumn(true)
+
+	for i, setting := range m.settingItems {
+		cursor := " " // no cursor
+		if m.cursor == i {
+			cursor = ">" // cursor!
+		}
+
+		settingsTable.Row(
+			fmt.Sprintf("  %s %s  ", cursor, setting),
+			"  "+configValueFromIndex(i),
+		)
+	}
 
 	// The footer
-	quit := "Press q to quit."
+	quit := " Press q to quit."
 
 	// Send the UI for rendering
 
@@ -196,7 +240,7 @@ func (m model) View() string {
 			BorderRow(true).
 			Row(header).
 			Row(sceneInfo).
-			Row().
+			Row(settings+settingsTable.Render()).
 			Row(quit).
 			Render())
 }
