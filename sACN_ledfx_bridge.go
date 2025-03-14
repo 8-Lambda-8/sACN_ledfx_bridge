@@ -74,6 +74,7 @@ var configData Config = Config{
 	Scenes:     []string{},
 	LedFx_host: "http://127.0.0.1:8888",
 }
+var tempScenes = []string{}
 
 var configFile = "./config.json"
 
@@ -125,6 +126,9 @@ func main() {
 	}
 }
 
+func loadLedfxScenes() {
+}
+
 type Styles struct {
 	colorText      lipgloss.Color
 	colorSelected  lipgloss.Color
@@ -156,6 +160,7 @@ type model struct {
 	width        int
 	height       int
 	cursor       int
+	sceneCursor  int
 	settingItems []string
 	textInput    textinput.Model
 	spinner      spinner.Model
@@ -204,6 +209,7 @@ func initialModel() model {
 		spinner:      sp,
 		recieving:    false,
 		changed:      false,
+		sceneCursor:  -1,
 	}
 }
 
@@ -234,28 +240,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "q":
-			if !m.textInput.Focused() {
+			if !m.textInput.Focused() && m.sceneCursor < 0 {
 				return m, tea.Quit
 			}
 
 		case "up", "k", "w":
-			if m.cursor > 0 && !m.textInput.Focused() {
+			if m.cursor > 0 && !m.textInput.Focused() && m.sceneCursor < 0 {
 				m.cursor--
+			} else if m.sceneCursor > 0 {
+				m.sceneCursor--
 			}
 
 		case "down", "j", "s":
-			if m.cursor < len(m.settingItems)-1 && !m.textInput.Focused() {
+			if m.cursor < len(m.settingItems)-1 && !m.textInput.Focused() && m.sceneCursor < 0 {
 				m.cursor++
+			} else if m.sceneCursor >= 0 && m.sceneCursor < len(tempScenes) {
+				m.sceneCursor++
 			}
 
 		case "enter", " ":
 			if (m.cursor == 0 || m.cursor == 1 || m.cursor == 2) && !m.textInput.Focused() {
+				// Select Text input
 				m.textInput.Validate = textInputValidatorGen(m.cursor)
 				m.textInput.Focus()
 				m.textInput.SetValue(configValueFromIndex(m.cursor))
+			} else if m.cursor == 3 && m.sceneCursor < 0 {
+				// Select Scenes menu
+				m.sceneCursor = 0
+				tempScenes = configData.Scenes[:]
+			} else if m.cursor == 3 && m.sceneCursor == 0 {
+				loadLedfxScenes()
 			} else if msg.String() == "enter" && m.textInput.Focused() && m.textInput.Err == nil {
-
-				// set changes
+				// set Text input changes
 				value := m.textInput.Value()
 				switch m.cursor {
 				case 0:
@@ -300,6 +316,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "esc":
 			m.textInput.Blur()
+			m.sceneCursor = -1
 
 		case "tab":
 			m.textInput.Reset()
@@ -350,7 +367,7 @@ func configValueFromIndex(index int) string {
 	case 2:
 		return configData.LedFx_host
 	case 3:
-		return "(not working yet, set scene ids in config.json)"
+		return fmt.Sprintf("%d Scenes", len(configData.Scenes))
 	default:
 		return ""
 	}
@@ -389,6 +406,7 @@ func (m model) View() string {
 
 	settingsColumn := ""
 	valueColumn := ""
+	sceneColumn := ""
 
 	for i, setting := range m.settingItems {
 		cursor := " " // no cursor
@@ -397,7 +415,9 @@ func (m model) View() string {
 		if m.cursor == i {
 			lineStyle = colStyle(m.styles.colorSelected)
 			if !m.textInput.Focused() {
-				cursor = ">" // cursor!
+				if m.sceneCursor < 0 {
+					cursor = ">" // cursor!
+				}
 			} else {
 				value = m.textInput.View()
 			}
@@ -407,14 +427,42 @@ func (m model) View() string {
 		valueColumn += value + "\n"
 	}
 
+	lineStyle := colStyle(m.styles.colorText).Strikethrough(true)
+	if m.sceneCursor == 0 {
+		sceneColumn += ">"
+		lineStyle = colStyle(m.styles.colorSelected).Strikethrough(true)
+	} else {
+		sceneColumn += " "
+	}
+	sceneColumn += " [get scenes from LedFx Api]"
+	sceneColumn = lineStyle.Render(sceneColumn) + "\n"
+
+	for i, ts := range tempScenes {
+		cursor := " " // no cursor
+		lineStyle := colStyle(m.styles.colorText)
+		if m.sceneCursor-1 == i {
+			cursor = ">" // cursor!
+			lineStyle = colStyle(m.styles.colorSelected)
+		}
+		sceneColumn += lineStyle.Render(fmt.Sprintf("%s %d. %s", cursor, i+1, ts)) + "\n"
+	}
+
 	pad := lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2)
-	settingsBlock := settingsHeader + "\n\n" +
-		lipgloss.JoinHorizontal(lipgloss.Top, pad.Render(settingsColumn), "", valueColumn)
+
+	settingsBlock := settingsHeader + "\n\n"
+	if m.sceneCursor < 0 {
+		settingsBlock += lipgloss.JoinHorizontal(lipgloss.Top, pad.Render(settingsColumn), valueColumn)
+	} else {
+		settingsBlock += lipgloss.JoinHorizontal(lipgloss.Top, pad.Render(settingsColumn), sceneColumn)
+	}
 
 	// The footer
 	footer := " Press q to quit."
 	if m.textInput.Focused() {
 		footer = " Press esc to abort edit or enter to submit."
+	}
+	if m.sceneCursor >= 0 {
+		footer = " Press esc to abort or PgUp or PgDn to reorder scenes or ctrl+S to Save"
 	}
 
 	// Send the UI for rendering
