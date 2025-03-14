@@ -346,6 +346,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.changed = false
 				configFromFile = true
 			}
+		case "pgup":
+			if m.cursor == 3 && m.sceneCursor > 1 {
+				tempScenes[m.sceneCursor-2], tempScenes[m.sceneCursor-1] =
+					tempScenes[m.sceneCursor-1], tempScenes[m.sceneCursor-2]
+				m.sceneCursor--
+			}
+		case "pgdown":
+			if m.cursor == 3 && m.sceneCursor > 0 && m.sceneCursor < len(tempScenes) {
+				tempScenes[m.sceneCursor-1], tempScenes[m.sceneCursor-0] =
+					tempScenes[m.sceneCursor-0], tempScenes[m.sceneCursor-1]
+				m.sceneCursor++
+			}
 		case "ctrl+s":
 			if m.cursor == 3 && m.sceneCursor >= 0 {
 				configData.Scenes = tempScenes
