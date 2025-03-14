@@ -120,15 +120,27 @@ func main() {
 }
 
 type Styles struct {
-	Border lipgloss.Style
-	Header lipgloss.Style
+	colorText     lipgloss.Color
+	colorSelected lipgloss.Color
+	colorError    lipgloss.Color
+	colorOK       lipgloss.Color
+	Border        lipgloss.Style
+	Header        lipgloss.Style
 }
 
 func DefaultStyles() *Styles {
 	s := new(Styles)
+	s.colorText = lipgloss.Color("7")
+	s.colorError = lipgloss.Color("1")
+	s.colorSelected = lipgloss.Color("8")
+	s.colorOK = lipgloss.Color("2")
 	s.Border = lipgloss.NewStyle().Foreground(lipgloss.Color("36"))
 	s.Header = lipgloss.NewStyle().Foreground(lipgloss.Color("202"))
 	return s
+}
+
+func colStyle(col lipgloss.Color) lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(col)
 }
 
 type model struct {
@@ -176,7 +188,6 @@ func initialModel() model {
 	sp := spinner.New()
 	sp.Spinner = spinner.Points
 	sp.Spinner.FPS = time.Second / 4
-	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 
 	return model{
 		styles:       DefaultStyles(),
@@ -295,7 +306,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	case recievingMsg:
 		m.recieving = true
-		m.spinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+		m.spinner.Style = colStyle(m.styles.colorOK)
 
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(m.spinner.Tick())
@@ -304,7 +315,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case timeOutMsg:
 		m.recieving = false
-		m.spinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+		m.spinner.Style = colStyle(m.styles.colorError)
 
 	case errMsg:
 		// ToDo: Handle this
