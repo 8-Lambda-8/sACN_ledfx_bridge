@@ -401,7 +401,10 @@ func (m model) View() string {
 	}
 
 	// The footer
-	quit := " Press q to quit."
+	footer := " Press q to quit."
+	if m.textInput.Focused() {
+		footer = " Press esc to abort edit or enter to submit."
+	}
 
 	// Send the UI for rendering
 
@@ -413,6 +416,6 @@ func (m model) View() string {
 			Row(header).
 			Row(lipgloss.JoinHorizontal(lipgloss.Center, " ", recievingSpinner, "   ", sceneInfo)).
 			Row(settings+"\n"+settingsTable.Render()).
-			Row(quit).
+			Row(footer).
 			Render())
 }
