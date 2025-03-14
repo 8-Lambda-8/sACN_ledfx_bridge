@@ -205,7 +205,7 @@ func textInputValidatorGen(cursorPos int) textinput.ValidateFunc {
 	if cursorPos < 2 {
 
 		var maxVal uint64 = 512
-		if cursorPos == 1 {
+		if cursorPos == 0 {
 			maxVal = 65279
 		}
 		return textinput.ValidateFunc(func(str string) error {
