@@ -143,11 +143,35 @@ type model struct {
 	changed      bool
 }
 
+func textInputValidatorGen(cursorPos int) textinput.ValidateFunc {
+	if cursorPos < 2 {
+
+		var maxVal uint64 = 512
+		if cursorPos == 1 {
+			maxVal = 65279
+		}
+		return textinput.ValidateFunc(func(str string) error {
+			i, err := strconv.ParseUint(str, 10, 16)
+			if err != nil {
+				return err
+			}
+			if 1 > i || i > uint64(maxVal) {
+				return fmt.Errorf("input out of Range")
+			}
+			return nil
+		})
+	} else {
+		return textinput.ValidateFunc(func(str string) error {
+			// Todo Validate URL
+			return nil
+		})
+	}
+}
+
 func initialModel() model {
 	ti := textinput.New()
 	ti.CharLimit = 120
 	ti.Width = 50
-	//Todo: add Validator
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Points
@@ -207,6 +231,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter", " ":
 			if (m.cursor == 0 || m.cursor == 1 || m.cursor == 2) && !m.textInput.Focused() {
+				m.textInput.Validate = textInputValidatorGen(m.cursor)
 				m.textInput.Focus()
 				m.textInput.SetValue(configValueFromIndex(m.cursor))
 			} else if msg.String() == "enter" && m.textInput.Focused() && m.textInput.Err == nil {
