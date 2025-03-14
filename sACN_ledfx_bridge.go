@@ -66,19 +66,25 @@ var ActiveScene = "OFF"
 var channelValue byte = 0
 var lastChannelValue byte = 0
 
-var configData Config
+var configFromFile bool = false
+
+var configData Config = Config{
+	Universe:   1,
+	Channel:    1,
+	Scenes:     []string{},
+	LedFx_host: "http://127.0.0.1:8888",
+}
 
 var configFile = "./config.json"
 
 func main() {
 	file, err := os.ReadFile(configFile)
-	if err != nil {
-		log.Fatalf("Failed to read file: %v\n", err)
-	}
-
-	err = json.Unmarshal(file, &configData)
-	if err != nil {
-		log.Fatal(err)
+	if err == nil {
+		err = json.Unmarshal(file, &configData)
+		if err != nil {
+			log.Fatal(err)
+		}
+		configFromFile = true
 	}
 
 	recv, err := sacn.NewReceiverSocket("", nil)
@@ -287,6 +293,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				m.changed = false
+				configFromFile = true
 			}
 
 		case "esc":
@@ -370,7 +377,9 @@ func (m model) View() string {
 	recievingSpinner := m.spinner.View()
 
 	settings := " Settings:"
-	if m.changed {
+	if !configFromFile {
+		settings += " (not saved)"
+	} else if m.changed {
 		settings += " (changed)"
 	}
 
