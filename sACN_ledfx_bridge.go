@@ -126,12 +126,13 @@ func main() {
 }
 
 type Styles struct {
-	colorText     lipgloss.Color
-	colorSelected lipgloss.Color
-	colorError    lipgloss.Color
-	colorOK       lipgloss.Color
-	Border        lipgloss.Style
-	Header        lipgloss.Style
+	colorText      lipgloss.Color
+	colorSelected  lipgloss.Color
+	colorError     lipgloss.Color
+	colorOK        lipgloss.Color
+	colorHighlight lipgloss.Color
+	Border         lipgloss.Style
+	Header         lipgloss.Style
 }
 
 func DefaultStyles() *Styles {
@@ -140,8 +141,9 @@ func DefaultStyles() *Styles {
 	s.colorError = lipgloss.Color("1")
 	s.colorSelected = lipgloss.Color("8")
 	s.colorOK = lipgloss.Color("2")
+	s.colorHighlight = lipgloss.Color("202")
 	s.Border = lipgloss.NewStyle().Foreground(lipgloss.Color("36"))
-	s.Header = lipgloss.NewStyle().Foreground(lipgloss.Color("202"))
+	s.Header = lipgloss.NewStyle().Foreground(s.colorHighlight)
 	return s
 }
 
@@ -376,19 +378,17 @@ func (m model) View() string {
 
 	recievingSpinner := m.spinner.View()
 
-	settings := " Settings:"
+	settingsHeader := lipgloss.NewStyle().PaddingLeft(2).Bold(true).
+		Foreground(m.styles.colorHighlight).
+		Render("Settings:")
 	if !configFromFile {
-		settings += " (not saved)"
+		settingsHeader += " (not saved)"
 	} else if m.changed {
-		settings += " (changed)"
+		settingsHeader += " (changed)"
 	}
 
-	settingsTable := table.New().
-		BorderTop(false).
-		BorderLeft(false).
-		BorderRight(false).
-		BorderBottom(false).
-		BorderColumn(true)
+	settingsColumn := ""
+	valueColumn := ""
 
 	for i, setting := range m.settingItems {
 		cursor := " " // no cursor
@@ -403,11 +403,13 @@ func (m model) View() string {
 			}
 		}
 
-		settingsTable.Row(
-			lineStyle.Render(fmt.Sprintf("  %s %s  ", cursor, setting)),
-			value,
-		)
+		settingsColumn += lineStyle.Render(fmt.Sprintf("%s %s", cursor, setting)) + "\n"
+		valueColumn += value + "\n"
 	}
+
+	pad := lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2)
+	settingsBlock := settingsHeader + "\n\n" +
+		lipgloss.JoinHorizontal(lipgloss.Top, pad.Render(settingsColumn), "", valueColumn)
 
 	// The footer
 	footer := " Press q to quit."
@@ -424,7 +426,7 @@ func (m model) View() string {
 			BorderRow(true).
 			Row(header).
 			Row(lipgloss.JoinHorizontal(lipgloss.Center, " ", recievingSpinner, "   ", sceneInfo)).
-			Row(settings+"\n"+settingsTable.Render()).
+			Row(settingsBlock).
 			Row(footer).
 			Render())
 }
