@@ -6,9 +6,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/Hundemeier/go-sacn/sacn"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
@@ -126,23 +128,35 @@ type model struct {
 	height       int
 	cursor       int
 	settingItems []string
+	textInput    textinput.Model
+
+	changed bool
 }
 
 func initialModel() model {
+	ti := textinput.New()
+	ti.CharLimit = 120
+	ti.Width = 50
+	//Todo: add Validator
+
 	return model{
 		styles:       DefaultStyles(),
-		settingItems: []string{"Universe", "Channel", "Scenes", "LedFx Host", "Save"},
+		settingItems: []string{"Universe", "Channel", "LedFx Host", "Scenes", "Save"},
+		changed:      false,
+		textInput:    ti,
 	}
 }
 
 func (m model) Init() tea.Cmd {
 	// Just return `nil`, which means "no I/O right now, please."
-	return nil
+	return textinput.Blink
 }
 
 type updateSceneMsg string
+type errMsg error
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
@@ -152,27 +166,72 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 
-		case "ctrl+c", "q":
+		case "ctrl+c":
 			return m, tea.Quit
+		case "q":
+			if !m.textInput.Focused() {
+				return m, tea.Quit
+			}
 
 		case "up", "k", "w":
-			if m.cursor > 0 {
+			if m.cursor > 0 && !m.textInput.Focused() {
 				m.cursor--
 			}
 
 		case "down", "j", "s":
-			if m.cursor < len(m.settingItems)-1 {
+			if m.cursor < len(m.settingItems)-1 && !m.textInput.Focused() {
 				m.cursor++
 			}
 
 		case "enter", " ":
+			if (m.cursor == 0 || m.cursor == 1 || m.cursor == 2) && !m.textInput.Focused() {
+				m.textInput.Focus()
+				m.textInput.SetValue(configValueFromIndex(m.cursor))
+			} else if msg.String() == "enter" && m.textInput.Focused() && m.textInput.Err == nil {
+				// set changes
+				value := m.textInput.Value()
+				switch m.cursor {
+				case 0:
+					i, err := strconv.Atoi(value)
+					if err == nil {
+						if configData.Universe != i {
+							m.changed = true
+						}
+						configData.Universe = i
+					}
+				case 1:
+					i, err := strconv.Atoi(value)
+					if err == nil {
+						if configData.Channel != i {
+							m.changed = true
+						}
+						configData.Channel = i
+					}
+				case 2:
+					if configData.LedFx_host != value {
+						m.changed = true
+					}
+					configData.LedFx_host = value
+				}
+
+				m.textInput.Blur()
+			}
+
+		case "esc":
+			m.textInput.Blur()
+
+		case "tab":
+			m.textInput.Reset()
 		}
 	case updateSceneMsg:
+
+	case errMsg:
+		// ToDo: Handle this
+		return m, nil
 	}
 
-	// Return the updated model to the Bubble Tea runtime for processing.
-	// Note that we're not returning a command.
-	return m, nil
+	m.textInput, cmd = m.textInput.Update(msg)
+	return m, cmd
 }
 
 func configValueFromIndex(index int) string {
@@ -181,8 +240,10 @@ func configValueFromIndex(index int) string {
 		return fmt.Sprintf("%d", configData.Universe)
 	case 1:
 		return fmt.Sprintf("%d", configData.Channel)
-	case 3:
+	case 2:
 		return configData.LedFx_host
+	case 3:
+		return "(not working yet, set scene ids in config.json)"
 	default:
 		return ""
 	}
@@ -208,7 +269,11 @@ func (m model) View() string {
 
 	sceneInfo := fmt.Sprintf(" %03d => %s", channelValue, ActiveScene)
 
-	settings := " Settings:\n"
+	settings := " Settings:"
+	if m.changed {
+		settings += " (changed)"
+	}
+
 	settingsTable := table.New().
 		BorderTop(false).
 		BorderLeft(false).
@@ -218,13 +283,18 @@ func (m model) View() string {
 
 	for i, setting := range m.settingItems {
 		cursor := " " // no cursor
+		value := "  " + configValueFromIndex(i)
 		if m.cursor == i {
-			cursor = ">" // cursor!
+			if !m.textInput.Focused() {
+				cursor = ">" // cursor!
+			} else {
+				value = m.textInput.View()
+			}
 		}
 
 		settingsTable.Row(
 			fmt.Sprintf("  %s %s  ", cursor, setting),
-			"  "+configValueFromIndex(i),
+			value,
 		)
 	}
 
@@ -240,7 +310,7 @@ func (m model) View() string {
 			BorderRow(true).
 			Row(header).
 			Row(sceneInfo).
-			Row(settings+settingsTable.Render()).
+			Row(settings+"\n"+settingsTable.Render()).
 			Row(quit).
 			Render())
 }
