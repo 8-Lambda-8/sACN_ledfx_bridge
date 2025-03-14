@@ -435,7 +435,7 @@ func (m model) View() string {
 		m.styles.Header.Render(
 			lipgloss.Place(
 				m.width-2,
-				m.height/4,
+				7,
 				lipgloss.Center,
 				lipgloss.Center,
 				title,
