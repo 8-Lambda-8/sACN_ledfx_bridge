@@ -322,6 +322,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if m.textInput.Err != nil {
+		m.textInput.TextStyle = colStyle(m.styles.colorError)
+	} else {
+		m.textInput.TextStyle = colStyle(m.styles.colorSelected)
+	}
+
 	m.textInput, cmd = m.textInput.Update(msg)
 	return m, cmd
 }
