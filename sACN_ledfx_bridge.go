@@ -237,7 +237,7 @@ func initialModel() model {
 
 	return model{
 		styles:       DefaultStyles(),
-		settingItems: []string{"Universe", "Channel", "LedFx Host", "Scenes", "Save"},
+		settingItems: []string{"Universe", "Channel", "LedFx Host", "Scenes", "[Save]"},
 		textInput:    ti,
 		spinner:      sp,
 		recieving:    false,
