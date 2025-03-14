@@ -346,7 +346,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.changed = false
 				configFromFile = true
 			}
-
+		case "ctrl+s":
+			if m.cursor == 3 && m.sceneCursor >= 0 {
+				configData.Scenes = tempScenes
+				m.sceneCursor = -1
+				m.changed = true
+			}
 		case "esc":
 			m.textInput.Blur()
 			m.sceneCursor = -1
