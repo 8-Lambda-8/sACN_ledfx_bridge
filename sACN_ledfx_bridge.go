@@ -78,6 +78,7 @@ var configData Config = Config{
 }
 var tempScenes = []string{}
 
+//Todo: config file path flag
 var configFile = "./config.json"
 
 func main() {
@@ -90,6 +91,7 @@ func main() {
 		configFromFile = true
 	}
 
+	//Todo: multicast
 	recv, err := sacn.NewReceiverSocket("", nil)
 	if err != nil {
 		log.Fatal(err)
@@ -120,6 +122,8 @@ func main() {
 		}
 	})
 	recv.Start()
+
+	//Todo: DeamonMode
 
 	p = tea.NewProgram(initialModel())
 	if _, err := p.Run(); err != nil {
@@ -506,6 +510,7 @@ func (m model) View() string {
 		}
 		sceneColumn += lineStyle.Render(fmt.Sprintf("%s %d. %s", cursor, i+1, ts)) + "\n"
 	}
+	//Todo: scene column floating window
 
 	pad := lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2)
 
