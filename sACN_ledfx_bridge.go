@@ -80,8 +80,7 @@ var configData Config = Config{
 }
 var tempScenes = []string{}
 
-//Todo: config file path flag
-var configFile = "./config.json"
+var configFile string
 
 func main() {
 
@@ -92,6 +91,7 @@ func main() {
 	)
 
 	flag.BoolVar(&daemonMode, "d", false, "run as a daemon")
+	flag.StringVar(&configFile, "c", "./config.json", "config file path")
 	flag.BoolVar(&showHelp, "h", false, "show help")
 	flag.Parse()
 
