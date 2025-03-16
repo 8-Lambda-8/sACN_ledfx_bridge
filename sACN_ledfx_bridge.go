@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -19,6 +20,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
+	"github.com/mattn/go-isatty"
 )
 
 var p *tea.Program
@@ -82,6 +84,30 @@ var tempScenes = []string{}
 var configFile = "./config.json"
 
 func main() {
+
+	var (
+		daemonMode bool
+		showHelp   bool
+		opts       []tea.ProgramOption
+	)
+
+	flag.BoolVar(&daemonMode, "d", false, "run as a daemon")
+	flag.BoolVar(&showHelp, "h", false, "show help")
+	flag.Parse()
+
+	if showHelp {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	if daemonMode || !isatty.IsTerminal(os.Stdout.Fd()) {
+		// If we're in daemon mode don't render the TUI
+		opts = []tea.ProgramOption{tea.WithoutRenderer()}
+	} else {
+		// If we're in TUI mode, discard log output
+		log.SetOutput(io.Discard)
+	}
+
 	file, err := os.ReadFile(configFile)
 	if err == nil {
 		err = json.Unmarshal(file, &configData)
@@ -123,9 +149,7 @@ func main() {
 	})
 	recv.Start()
 
-	//Todo: DeamonMode
-
-	p = tea.NewProgram(initialModel())
+	p = tea.NewProgram(initialModel(), opts...)
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("Alas, there's been an error: %v", err)
 		os.Exit(1)
