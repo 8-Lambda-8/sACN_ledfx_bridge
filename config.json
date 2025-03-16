@@ -1,5 +1,7 @@
 {
   "sAcnUniverse": 1,
   "channel": 1,
+  "scenes": [
+  ],
   "ledfx_host": "http://127.0.0.1:8888"
 }
