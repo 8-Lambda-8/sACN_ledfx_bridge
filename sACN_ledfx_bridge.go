@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -229,6 +231,8 @@ type model struct {
 	changed      bool
 }
 
+var urlRegex = regexp.MustCompile(`(?m)^(?P<protocol>https?):\/\/(?P<host>(?:(?:[a-z0-9\-_]+\b)\.)*\w+\b)(?:\:(?P<port>\d{1,5}))?(?P<path>\/[\/\d\w\.-]*)*(?:\?(?P<query>[^#/]+))?(?:#(?P<fragment>.+))?$`)
+
 func textInputValidatorGen(cursorPos int) textinput.ValidateFunc {
 	if cursorPos < 2 {
 
@@ -248,8 +252,11 @@ func textInputValidatorGen(cursorPos int) textinput.ValidateFunc {
 		})
 	} else {
 		return textinput.ValidateFunc(func(str string) error {
-			// Todo Validate URL
-			return nil
+
+			if urlRegex.FindString(str) != "" {
+				return nil
+			}
+			return errors.New("url invalid")
 		})
 	}
 }
